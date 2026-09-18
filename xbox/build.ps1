@@ -68,6 +68,44 @@ function Configure-UwpSourceCompatibility([string] $engineRoot) {
     Replace-Text $filePathUtil `
         'return \( \(0!=::PathFileExists\(path\.c_str\(\)\)\) && \(0==::PathIsDirectory\(path\.c_str\(\)\)\) \);' `
         "const DWORD attributes = ::GetFileAttributesW(path.c_str());`n`treturn attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;" | Out-Null
+
+    $jxrPath = Join-Path $engineRoot 'external\krkrz\visual\LoadJXR.cpp'
+    $graphicsLoaderPath = Join-Path $engineRoot 'src\core\visual\sdl2\GraphicsLoaderImpl.cpp'
+    $videoOverlayPath = Join-Path $engineRoot 'src\core\visual\sdl2\VideoOvlImpl.cpp'
+    $susieArchivePath = Join-Path $engineRoot 'src\core\base\sdl2\SusieArchive.cpp'
+    $pluginPath = Join-Path $engineRoot 'src\core\base\sdl2\PluginImpl.cpp'
+    $applicationPath = Join-Path $engineRoot 'src\core\sdl2\SDLApplication.cpp'
+    $saveTlgPath = Join-Path $engineRoot 'external\krkrz\visual\SaveTLG5.cpp'
+    foreach ($path in @($jxrPath, $graphicsLoaderPath, $videoOverlayPath, $susieArchivePath, $pluginPath, $applicationPath, $saveTlgPath)) {
+        if (-not (Test-Path $path)) {
+            throw "Expected UWP compatibility source was not found: $path"
+        }
+    }
+    Replace-Text $jxrPath `
+        '#if defined\( WIN32 \) && defined\( TVP_JPEG_XR_USE_WIN_CODEC \)' `
+        '#if defined(_WIN32) && defined(TVP_JPEG_XR_USE_WIN_CODEC) && !defined(__WINRT__)' | Out-Null
+    Replace-Text $graphicsLoaderPath `
+        '#ifdef _WIN32' `
+        '#if defined(_WIN32) && !defined(__WINRT__)' | Out-Null
+    Replace-Text $videoOverlayPath `
+        'unsigned long\s+ret;' `
+        'unsigned long ret = 0;' | Out-Null
+    Replace-Text $susieArchivePath `
+        '#ifdef _WIN32' `
+        '#if defined(_WIN32) && !defined(__WINRT__)' | Out-Null
+    $pluginVersionReplacement = '#if defined(_WIN32) && !defined(__WINRT__)$1#else' + [Environment]::NewLine + [Environment]::NewLine +
+        'bool TVPGetFileVersionOf(const wchar_t*, tjs_int &major, tjs_int &minor, tjs_int &release, tjs_int &build)' + [Environment]::NewLine +
+        '{' + [Environment]::NewLine + "`tmajor = minor = release = build = 0;" + [Environment]::NewLine +
+        "`treturn false;" + [Environment]::NewLine + '}' + [Environment]::NewLine + '#endif'
+    Replace-Text $pluginPath `
+        '(?s)#ifdef _WIN32(\s*bool TVPGetFileVersionOf.*?return got;\s*}\s*//---------------------------------------------------------------------------\s*)#endif' `
+        $pluginVersionReplacement | Out-Null
+    Replace-Text $applicationPath `
+        '#ifdef _WIN32' `
+        '#if defined(_WIN32) && !defined(__WINRT__)' | Out-Null
+    Replace-Text $saveTlgPath `
+        'int \*blocksizes;' `
+        'int *blocksizes = nullptr;' | Out-Null
 }
 
 Require-Command 'git'
