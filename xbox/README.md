@@ -29,13 +29,13 @@ $env:KRKR_GAME = 'D:\Games\YourGame'
 
 ## 没有 Windows
 
-仓库提供了 GitHub Actions 云端构建：[`.github/workflows/build-xbox-msix.yml`](../.github/workflows/build-xbox-msix.yml)。将项目推送到 GitHub 后，在 **Actions → Build Xbox MSIX → Run workflow**，工作流会在 `windows-2022` runner 上构建、生成临时开发证书并签名，然后把 `KRKR-Xbox.msix` 和 `.cer` 上传为 Artifact。不需要提供游戏 ZIP。
+仓库提供了 GitHub Actions 云端构建：[`.github/workflows/build-xbox-msix.yml`](../.github/workflows/build-xbox-msix.yml)。将项目推送到 GitHub 后，在 **Actions → Build Xbox MSIX 0.1beta → Run workflow**，工作流会在 `windows-2022` runner 上构建、生成临时开发证书并签名，然后把 `KRKR-Xbox-0.1beta.msix` 和 `krkr-xbox-dev-0.1beta.cer` 上传为 Artifact。不需要提供游戏 ZIP。
 
-下载 Artifact 后，先在 Xbox Dev Mode 的证书管理/Device Portal 中安装 `krkr-xbox-dev.cer`，再安装 MSIX。每次工作流运行都会生成新证书，旧包和旧证书不能混用。
+下载 Artifact 后，先在 Xbox Dev Mode 的证书管理/Device Portal 中安装 `krkr-xbox-dev-0.1beta.cer`，再安装 MSIX。每次工作流运行都会生成新证书，旧包和旧证书不能混用。
 
 游戏文件由你在 Xbox 上通过系统文件夹选择器选择；应用只使用系统授予的目录权限。ZIP 导入支持普通未加密 ZIP，解压后需要能找到 `startup.tjs` 或 XP3。不要选择或运行你没有合法使用权的商业资源。
 
-脚本只生成引擎 MSIX 和最小 PNG 图标，生成物是 `out\KRKR-Xbox.msix`；游戏目录不参与构建。
+脚本只生成引擎 MSIX 和最小 PNG 图标，生成物是 `out\KRKR-Xbox-0.1beta.msix`；游戏目录不参与构建。
 
 首次拉取本项目后直接运行脚本即可；也可以预先执行：
 

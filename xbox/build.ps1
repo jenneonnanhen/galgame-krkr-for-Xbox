@@ -10,12 +10,34 @@ $root = Split-Path -Parent $PSScriptRoot
 $engine = Join-Path $root 'engine\krkrsdl2'
 $build = Join-Path $root 'out\meson'
 $stage = Join-Path $root 'out\stage'
-$msix = Join-Path $root 'out\KRKR-Xbox.msix'
+$msix = Join-Path $root 'out\KRKR-Xbox-0.1beta.msix'
 
 function Require-Command([string] $name) {
     if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
         throw "Missing '$name'. Install Visual Studio 2022 (Desktop C++), Meson, Ninja and the Windows 10 SDK."
     }
+}
+
+function Disable-UwpDirectShowCompatibility([string] $krkrzRoot) {
+    $cmakePath = Join-Path $krkrzRoot 'external\krkrz\CMakeLists.txt'
+    if (-not (Test-Path $cmakePath)) {
+        return
+    }
+
+    $cmakeText = [System.IO.File]::ReadAllText($cmakePath) -replace "`r`n", "`n"
+
+    $cmakeText = [regex]::Replace(
+        $cmakeText,
+        '(?ms)\s*list\(APPEND BASECLASSES_SOURCES\s*\n.*?\n\s*\)\s*',
+        "`n# DirectShow baseclasses are intentionally disabled for WinRT/UWP builds.`n"
+    )
+
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*\$\{BASECLASSES_SOURCES\}\s*\r?\n?', '')
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*external/baseclasses/.*\r?\n?', '')
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*-l(quartz|strmiids|dmoguids|amstrmid|dxguid)\b.*\r?\n?', '')
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*\-l(quartz|strmiids|dmoguids|amstrmid|dxguid)\b.*\r?\n?', '')
+
+    [System.IO.File]::WriteAllText($cmakePath, $cmakeText, [Text.UTF8Encoding]::new($false))
 }
 
 Require-Command 'git'
@@ -35,6 +57,8 @@ if (-not (Test-Path (Join-Path $engine 'meson.build'))) {
     git clone --depth 1 https://github.com/krkrsdl2/krkrsdl2.git $engine
     git -C $engine submodule update --init --recursive
 }
+
+Disable-UwpDirectShowCompatibility $engine
 
 $entryPath = Join-Path $engine 'src\core\sdl2\SDLEntrypoint.cpp'
 $pickerPath = Join-Path $engine 'src\core\sdl2\krkr-xbox-folder-picker.cpp'
