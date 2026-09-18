@@ -200,8 +200,8 @@ if ($Backend -eq 'cmake') {
         '-DCMAKE_SYSTEM_VERSION=10.0.18362.0',
         "-DCMAKE_TOOLCHAIN_FILE=$toolchain",
         '-DVCPKG_TARGET_TRIPLET=x64-uwp',
-        '-DCMAKE_CXX_FLAGS=/DWINAPI_FAMILY=WINAPI_FAMILY_APP /D__WINRT__ /wd4700 /wd4703 /wd4996',
-        '-DCMAKE_C_FLAGS=/DWINAPI_FAMILY=WINAPI_FAMILY_APP /D__WINRT__ /wd4996'
+        '-DCMAKE_CXX_FLAGS=/DWINAPI_FAMILY=WINAPI_FAMILY_APP /D__WINRT__ /DEXPORT /wd4700 /wd4703 /wd4996',
+        '-DCMAKE_C_FLAGS=/DWINAPI_FAMILY=WINAPI_FAMILY_APP /D__WINRT__ /DEXPORT /wd4996'
     )
     & cmake @cmakeArgs
     if ($LASTEXITCODE -ne 0) { throw "CMake configure failed with exit code $LASTEXITCODE" }
