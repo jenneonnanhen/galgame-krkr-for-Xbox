@@ -83,8 +83,9 @@ function Configure-UwpSourceCompatibility([string] $engineRoot) {
     $susieArchivePath = Join-Path $engineRoot 'src\core\base\sdl2\SusieArchive.cpp'
     $pluginPath = Join-Path $engineRoot 'src\core\base\sdl2\PluginImpl.cpp'
     $applicationPath = Join-Path $engineRoot 'src\core\sdl2\SDLApplication.cpp'
+    $entrypointPath = Join-Path $engineRoot 'src\core\sdl2\SDLEntrypoint.cpp'
     $saveTlgPath = Join-Path $engineRoot 'external\krkrz\visual\SaveTLG5.cpp'
-    foreach ($path in @($jxrPath, $graphicsLoaderPath, $videoOverlayPath, $susieArchivePath, $pluginPath, $applicationPath, $saveTlgPath)) {
+    foreach ($path in @($jxrPath, $graphicsLoaderPath, $videoOverlayPath, $susieArchivePath, $pluginPath, $applicationPath, $entrypointPath, $saveTlgPath)) {
         if (-not (Test-Path $path)) {
             throw "Expected UWP compatibility source was not found: $path"
         }
@@ -114,6 +115,9 @@ function Configure-UwpSourceCompatibility([string] $engineRoot) {
     Replace-Text $applicationPath `
         'TVPWindowWindow \*win = reinterpret_cast<TVPWindowWindow\*>\(::GetWindowLongPtr\(\(HWND\)hWnd, GWLP_USERDATA\)\);' `
         "TVPWindowWindow *win = nullptr;`n#if !defined(__WINRT__)`n`twin = reinterpret_cast<TVPWindowWindow*>(::GetWindowLongPtr((HWND)hWnd, GWLP_USERDATA));`n#endif" | Out-Null
+    Replace-Text $entrypointPath `
+        'defined\(_WIN32\) && defined\(_UNICODE\)' `
+        'defined(_WIN32) && defined(_UNICODE) && !defined(USE_SDL_MAIN)' | Out-Null
     Replace-Text $saveTlgPath `
         'int \*blocksizes;' `
         'int *blocksizes = nullptr;' | Out-Null
