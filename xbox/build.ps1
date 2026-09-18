@@ -117,7 +117,7 @@ function Configure-UwpSourceCompatibility([string] $engineRoot) {
         "TVPWindowWindow *win = nullptr;`n#if !defined(__WINRT__)`n`twin = reinterpret_cast<TVPWindowWindow*>(::GetWindowLongPtr((HWND)hWnd, GWLP_USERDATA));`n#endif" | Out-Null
     Replace-Text $entrypointPath `
         'defined\(_WIN32\) && defined\(_UNICODE\)' `
-        'defined(_WIN32) && defined(_UNICODE) && !defined(USE_SDL_MAIN)' | Out-Null
+        'defined(_WIN32) && defined(_UNICODE) && !defined(__WINRT__)' | Out-Null
     Replace-Text $saveTlgPath `
         'int \*blocksizes;' `
         'int *blocksizes = nullptr;' | Out-Null
