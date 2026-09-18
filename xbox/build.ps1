@@ -18,26 +18,56 @@ function Require-Command([string] $name) {
     }
 }
 
-function Disable-UwpDirectShowCompatibility([string] $krkrzRoot) {
-    $cmakePath = Join-Path $krkrzRoot 'external\krkrz\CMakeLists.txt'
+function Replace-Text([string] $path, [string] $pattern, [string] $replacement) {
+    $text = [System.IO.File]::ReadAllText($path) -replace "`r`n", "`n"
+    $updated = [regex]::Replace($text, $pattern, $replacement)
+    if ($updated -eq $text) {
+        return $false
+    }
+    [System.IO.File]::WriteAllText($path, $updated, [Text.UTF8Encoding]::new($false))
+    return $true
+}
+
+function Disable-UwpDirectShowCompatibility([string] $cmakePath) {
     if (-not (Test-Path $cmakePath)) {
-        return
+        throw "KRKR SDL2 CMakeLists.txt was not found: $cmakePath"
     }
 
     $cmakeText = [System.IO.File]::ReadAllText($cmakePath) -replace "`r`n", "`n"
-
-    $cmakeText = [regex]::Replace(
-        $cmakeText,
-        '(?ms)\s*list\(APPEND BASECLASSES_SOURCES\s*\n.*?\n\s*\)\s*',
-        "`n# DirectShow baseclasses are intentionally disabled for WinRT/UWP builds.`n"
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*(external/krkrz/movie/win32/[^ \r\n]+|external/krkrz/external/baseclasses/[^ \r\n]+)\s*\r?\n', '')
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*(external/krkrz/movie/win32|external/krkrz/external/baseclasses)\s*\r?\n', '')
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*(dmoguids|strmiids|mfplat|mf|mfuuid|amstrmid|dxguid|quartz)\s*\r?\n', '')
+    $cmakeText = $cmakeText.Replace(
+        'if((${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686") OR (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64"))',
+        'if(CMAKE_SYSTEM_PROCESSOR STREQUAL "i686" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64")'
     )
-
-    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*\$\{BASECLASSES_SOURCES\}\s*\r?\n?', '')
-    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*external/baseclasses/.*\r?\n?', '')
-    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*-l(quartz|strmiids|dmoguids|amstrmid|dxguid)\b.*\r?\n?', '')
-    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*\-l(quartz|strmiids|dmoguids|amstrmid|dxguid)\b.*\r?\n?', '')
-
     [System.IO.File]::WriteAllText($cmakePath, $cmakeText, [Text.UTF8Encoding]::new($false))
+}
+
+function Configure-UwpSourceCompatibility([string] $engineRoot) {
+    $desktopGuardFiles = @(
+        'src\core\environ\sdl2\ApplicationSpecialPath.h',
+        'external\krkrz\visual\TVPColor.h',
+        'external\krkrz\visual\DrawDevice.cpp'
+    )
+    foreach ($relativePath in $desktopGuardFiles) {
+        $path = Join-Path $engineRoot $relativePath
+        if (-not (Test-Path $path)) {
+            throw "Expected UWP compatibility source was not found: $path"
+        }
+        Replace-Text $path '(?m)^(\s*)#ifdef _WIN32\s*$' '$1#if defined(_WIN32) && !defined(__WINRT__)' | Out-Null
+    }
+
+    $filePathUtil = Join-Path $engineRoot 'external\krkrz\utils\FilePathUtil.h'
+    if (-not (Test-Path $filePathUtil)) {
+        throw "Expected UWP compatibility source was not found: $filePathUtil"
+    }
+    Replace-Text $filePathUtil `
+        'return \(0!=::PathIsDirectory\(path\.c_str\(\)\)\);' `
+        'return ((::GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES) && ((::GetFileAttributesW(path.c_str()) & FILE_ATTRIBUTE_DIRECTORY) != 0));' | Out-Null
+    Replace-Text $filePathUtil `
+        'return \( \(0!=::PathFileExists\(path\.c_str\(\)\)\) && \(0==::PathIsDirectory\(path\.c_str\(\)\)\) \);' `
+        "const DWORD attributes = ::GetFileAttributesW(path.c_str());`n`treturn attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;" | Out-Null
 }
 
 Require-Command 'git'
@@ -57,8 +87,6 @@ if (-not (Test-Path (Join-Path $engine 'meson.build'))) {
     git clone --depth 1 https://github.com/krkrsdl2/krkrsdl2.git $engine
     git -C $engine submodule update --init --recursive
 }
-
-Disable-UwpDirectShowCompatibility $engine
 
 $entryPath = Join-Path $engine 'src\core\sdl2\SDLEntrypoint.cpp'
 $pickerPath = Join-Path $engine 'src\core\sdl2\krkr-xbox-folder-picker.cpp'
@@ -98,6 +126,8 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 
 if ($Backend -eq 'cmake') {
     $cmakeLists = Join-Path $engine 'CMakeLists.txt'
+    Disable-UwpDirectShowCompatibility $cmakeLists
+    Configure-UwpSourceCompatibility $engine
     $cmakeText = [IO.File]::ReadAllText($cmakeLists) -replace "`r`n", "`n"
     $cmakeText = $cmakeText.Replace('if((${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686") OR (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64"))', 'if(CMAKE_SYSTEM_PROCESSOR STREQUAL "i686" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64")')
     $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*-Wno-non-virtual-dtor\s*\r?\n', '')

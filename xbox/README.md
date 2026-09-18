@@ -25,7 +25,7 @@ $env:KRKR_GAME = 'D:\Games\YourGame'
 .\xbox\build-cmake.ps1
 ```
 
-该路线使用 Visual Studio 2022 的 CMake 生成器、Windows Store 工具链和 `x64-uwp` SDL2 依赖，适合 Xbox 主机的 x64 开发者模式包。首次启动选择目录后，授权会保存到 UWP `FutureAccessList`，下次启动优先恢复上次目录。
+该路线使用 Visual Studio 2022 的 CMake 生成器、Windows Store 工具链和 `x64-uwp` SDL2 依赖，适合 Xbox 主机的 x64 开发者模式包。脚本会自动排除 UWP 不支持的 DirectShow/baseclasses 和桌面媒体库，避免 CMake 把 Win32 视频实现编译进 Xbox 包。首次启动选择目录后，授权会保存到 UWP `FutureAccessList`，下次启动优先恢复上次目录。
 
 ## 没有 Windows
 
