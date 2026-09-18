@@ -36,6 +36,7 @@ function Disable-UwpDirectShowCompatibility([string] $cmakePath) {
     $cmakeText = [System.IO.File]::ReadAllText($cmakePath) -replace "`r`n", "`n"
     $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*(external/krkrz/movie/win32/[^ \r\n]+|external/krkrz/external/baseclasses/[^ \r\n]+)\s*\r?\n', '')
     $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*(external/krkrz/movie/win32|external/krkrz/external/baseclasses)\s*\r?\n', '')
+    $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*external/krkrz/external/libjpeg-turbo/turbojpeg\.c\s*\r?\n', '')
     $cmakeText = [regex]::Replace($cmakeText, '(?m)^\s*(dmoguids|strmiids|mfplat|mf|mfuuid|amstrmid|dxguid|quartz)\s*\r?\n', '')
     $cmakeText = $cmakeText.Replace(
         'if((${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686") OR (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64"))',
