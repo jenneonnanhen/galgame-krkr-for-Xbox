@@ -101,8 +101,11 @@ function Configure-UwpSourceCompatibility([string] $engineRoot) {
         '(?s)#ifdef _WIN32(\s*bool TVPGetFileVersionOf.*?return got;\s*}\s*//---------------------------------------------------------------------------\s*)#endif' `
         $pluginVersionReplacement | Out-Null
     Replace-Text $applicationPath `
-        '#ifdef _WIN32' `
-        '#if defined(_WIN32) && !defined(__WINRT__)' | Out-Null
+        '::SetWindowLongPtr\(this->GetHandle\(\), GWLP_USERDATA, \(LONG_PTR\)this\);' `
+        "#if !defined(__WINRT__)`n`t::SetWindowLongPtr(this->GetHandle(), GWLP_USERDATA, (LONG_PTR)this);`n#endif" | Out-Null
+    Replace-Text $applicationPath `
+        'TVPWindowWindow \*win = reinterpret_cast<TVPWindowWindow\*>\(::GetWindowLongPtr\(\(HWND\)hWnd, GWLP_USERDATA\)\);' `
+        "TVPWindowWindow *win = nullptr;`n#if !defined(__WINRT__)`n`twin = reinterpret_cast<TVPWindowWindow*>(::GetWindowLongPtr((HWND)hWnd, GWLP_USERDATA));`n#endif" | Out-Null
     Replace-Text $saveTlgPath `
         'int \*blocksizes;' `
         'int *blocksizes = nullptr;' | Out-Null
@@ -197,7 +200,7 @@ if ($Backend -eq 'cmake') {
         '-DCMAKE_SYSTEM_VERSION=10.0.18362.0',
         "-DCMAKE_TOOLCHAIN_FILE=$toolchain",
         '-DVCPKG_TARGET_TRIPLET=x64-uwp',
-        '-DCMAKE_CXX_FLAGS=/DWINAPI_FAMILY=WINAPI_FAMILY_APP /D__WINRT__'
+        '-DCMAKE_CXX_FLAGS=/DWINAPI_FAMILY=WINAPI_FAMILY_APP /D__WINRT__ /wd4700 /wd4703'
     )
     & cmake @cmakeArgs
     if ($LASTEXITCODE -ne 0) { throw "CMake configure failed with exit code $LASTEXITCODE" }
