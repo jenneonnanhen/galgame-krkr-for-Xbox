@@ -43,6 +43,13 @@ function Disable-UwpDirectShowCompatibility([string] $cmakePath) {
         'if(CMAKE_SYSTEM_PROCESSOR STREQUAL "i686" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64")'
     )
     [System.IO.File]::WriteAllText($cmakePath, $cmakeText, [Text.UTF8Encoding]::new($false))
+
+    $sourceListPath = Join-Path (Split-Path -Parent $cmakePath) 'src\config\src_list\kirikirisdl2\sources.txt'
+    if (Test-Path $sourceListPath) {
+        Replace-Text $sourceListPath `
+            '(?m)^\s*external/krkrz/external/libjpeg-turbo/turbojpeg\.c\s*\r?\n' `
+            '' | Out-Null
+    }
 }
 
 function Configure-UwpSourceCompatibility([string] $engineRoot) {
